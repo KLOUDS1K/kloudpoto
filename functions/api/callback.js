@@ -1,4 +1,3 @@
-// functions/api/callback.js
 export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
@@ -28,36 +27,40 @@ export async function onRequest(context) {
       return new Response(`<h1>Token Error: ${tokenData.error}</h1>`, { status: 400 });
     }
 
-    // Decap CMS가 가장 잘 먹는 renderBody 방식
-    const html = `
-      <script>
-        const message = {
-          type: "authorization:github:success",
-          token: "${tokenData.access_token}",
-          provider: "github"
-        };
+    // Decap CMS에서 가장 잘 먹히는 renderBody 방식
+    function renderBody(status, content) {
+      const html = `
+        <script>
+          const receiveMessage = (message) => {
+            window.opener.postMessage(
+              'authorization:github:success:${JSON.stringify(content)}',
+              message.origin
+            );
+            window.removeEventListener("message", receiveMessage, false);
+          };
+          window.addEventListener("message", receiveMessage, false);
 
-        // 여러 방식으로 동시에 시도 (성공률 높임)
-        if (window.opener) {
-          window.opener.postMessage(message, "${url.origin}");
-          window.opener.postMessage("authorization:github:success:" + JSON.stringify(message), "${url.origin}");
-        }
+          // authorizing 신호 먼저 보내기
+          window.opener.postMessage("authorizing:github", "*");
 
-        // 부모 창에 직접 보내기
-        window.parent.postMessage(message, "${url.origin}");
+          // 성공 신호 보내기
+          window.opener.postMessage(
+            'authorization:github:success:${JSON.stringify(content)}',
+            "${url.origin}"
+          );
 
-        console.log("PostMessage sent to origin: ${url.origin}");
+          setTimeout(() => window.close(), 1500);
+        </script>
+      `;
+      return html;
+    }
 
-        // 2초 후 창 닫기
-        setTimeout(() => window.close(), 2000);
-      </script>
-      <body style="font-family:sans-serif; padding:30px;">
-        <h2>로그인 완료 처리 중...</h2>
-        <p>Decap CMS로 돌아가는 중입니다. 잠시만 기다려주세요.</p>
-      </body>
-    `;
+    const content = {
+      token: tokenData.access_token,
+      provider: 'github'
+    };
 
-    return new Response(html, {
+    return new Response(renderBody(200, content), {
       headers: { 'Content-Type': 'text/html;charset=UTF-8' },
       status: 200
     });
