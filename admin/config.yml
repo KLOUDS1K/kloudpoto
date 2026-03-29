@@ -1,17 +1,21 @@
 backend:
   name: github
-  repo: "KLOUDS1K/kloudpoto" 
+  repo: KLOUDS1K/kloudpoto  # 본인 깃허브 아이디/저장소 이름이 맞는지 확인!
   branch: main
+  base_url: https://kloudpoto.pages.dev # 이 줄이 들어가야 Cloudflare 인증을 사용합니다.
+  auth_endpoint: api/auth
 
-media_folder: "images/uploads"
-public_folder: "/images/uploads"
+media_folder: "public/images"
+public_folder: "/images"
 
 collections:
   - name: "photos"
     label: "Photos"
     folder: "content/photos"
     create: true
+    slug: "{{slug}}"
     fields:
-      - {label: "제목", name: "title", widget: "string"}
-      - {label: "사진 선택", name: "image", widget: "image"}
-      - {label: "날짜", name: "date", widget: "datetime"}
+      - { label: "Title", name: "title", widget: "string" }
+      - { label: "Date", name: "date", widget: "datetime" }
+      - { label: "Image", name: "image", widget: "image" }
+      - { label: "Description", name: "body", widget: "markdown" }
