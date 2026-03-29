@@ -1,0 +1,17 @@
+backend:
+  name: github
+  repo: "KLOUDS1K/kloudpoto" 
+  branch: main
+
+media_folder: "images/uploads"
+public_folder: "/images/uploads"
+
+collections:
+  - name: "photos"
+    label: "Photos"
+    folder: "content/photos"
+    create: true
+    fields:
+      - {label: "제목", name: "title", widget: "string"}
+      - {label: "사진 선택", name: "image", widget: "image"}
+      - {label: "날짜", name: "date", widget: "datetime"}
