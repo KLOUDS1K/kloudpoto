@@ -8,6 +8,10 @@ backend:
 media_folder: "public/images"
 public_folder: "/images"
 
+# 🔑 여기서부터 중요: 주소 꼬임 방지
+site_url: https://kloud.photography
+display_url: https://kloud.photography
+
 collections:
   - name: "photos"
     label: "Photos"
