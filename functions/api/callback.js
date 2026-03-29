@@ -3,12 +3,14 @@ export async function onRequest(context) {
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
 
+  console.log('Callback called with code:', code ? 'exists' : 'missing');
+
   if (!code) {
-    return new Response('<h1>No code</h1>', { status: 400 });
+    return new Response('<h1>No code provided</h1><p>GitHub에서 코드가 전달되지 않았습니다.</p>', { status: 400 });
   }
 
   try {
-    const response = await fetch('https://github.com/login/oauth/access_token', {
+    const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -22,13 +24,13 @@ export async function onRequest(context) {
       })
     });
 
-    const tokenData = await response.json();
+    const tokenData = await tokenResponse.json();
+    console.log('Token response:', tokenData);
 
     if (tokenData.error) {
-      return new Response(`<h1>Error: ${tokenData.error}</h1>`, { status: 400 });
+      return new Response(`<h1>Token Error: ${tokenData.error}</h1>`, { status: 400 });
     }
 
-    // Decap CMS가 기대하는 정확한 메시지 (가장 중요한 부분)
     const message = {
       type: 'authorization:github:success',
       token: tokenData.access_token,
@@ -38,21 +40,32 @@ export async function onRequest(context) {
     const html = `
       <!DOCTYPE html>
       <html>
-      <head><title>Authenticating...</title></head>
+      <head>
+        <title>Authenticating to KLOUD CMS...</title>
+        <style>body { font-family: sans-serif; padding: 20px; }</style>
+      </head>
       <body>
+        <h2>로그인 처리 중...</h2>
+        <p>잠시만 기다려주세요. 이 창은 자동으로 닫힙니다.</p>
         <script>
           const targetOrigin = "${url.origin}";
           const msg = ${JSON.stringify(message)};
 
+          console.log("🎯 Sending postMessage to:", targetOrigin);
+          console.log("📦 Message:", msg);
+
           if (window.opener) {
             window.opener.postMessage(msg, targetOrigin);
-            console.log("✅ Token successfully sent to Decap CMS");
+            console.log("✅ postMessage sent successfully!");
           } else {
-            console.log("⚠️ No opener window");
+            console.log("❌ No window.opener found");
           }
 
-          // 창 닫기
-          setTimeout(() => window.close(), 500);
+          // 창을 3초 동안 유지 (콘솔 볼 수 있게)
+          setTimeout(() => {
+            console.log("Closing window now...");
+            window.close();
+          }, 3000);
         </script>
       </body>
       </html>
@@ -64,7 +77,7 @@ export async function onRequest(context) {
     });
 
   } catch (err) {
-    console.error(err);
-    return new Response('<h1>Authentication failed</h1>', { status: 500 });
+    console.error('Callback error:', err);
+    return new Response('<h1>Authentication failed</h1><p>오류가 발생했습니다.</p>', { status: 500 });
   }
 }
