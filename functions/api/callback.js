@@ -1,12 +1,11 @@
+// functions/api/callback.js
 export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
 
-  console.log('Callback called with code:', code ? 'exists' : 'missing');
-
   if (!code) {
-    return new Response('<h1>No code provided</h1><p>GitHub에서 코드가 전달되지 않았습니다.</p>', { status: 400 });
+    return new Response('<h1>No code provided</h1>', { status: 400 });
   }
 
   try {
@@ -14,8 +13,7 @@ export async function onRequest(context) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'User-Agent': 'kloud-photography'
+        'Accept': 'application/json'
       },
       body: JSON.stringify({
         client_id: env.GITHUB_CLIENT_ID,
@@ -25,50 +23,38 @@ export async function onRequest(context) {
     });
 
     const tokenData = await tokenResponse.json();
-    console.log('Token response:', tokenData);
 
     if (tokenData.error) {
       return new Response(`<h1>Token Error: ${tokenData.error}</h1>`, { status: 400 });
     }
 
-    const message = {
-      type: 'authorization:github:success',
-      token: tokenData.access_token,
-      provider: 'github'
-    };
-
+    // Decap CMS가 가장 잘 먹는 renderBody 방식
     const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Authenticating to KLOUD CMS...</title>
-        <style>body { font-family: sans-serif; padding: 20px; }</style>
-      </head>
-      <body>
-        <h2>로그인 처리 중...</h2>
-        <p>잠시만 기다려주세요. 이 창은 자동으로 닫힙니다.</p>
-        <script>
-          const targetOrigin = "${url.origin}";
-          const msg = ${JSON.stringify(message)};
+      <script>
+        const message = {
+          type: "authorization:github:success",
+          token: "${tokenData.access_token}",
+          provider: "github"
+        };
 
-          console.log("🎯 Sending postMessage to:", targetOrigin);
-          console.log("📦 Message:", msg);
+        // 여러 방식으로 동시에 시도 (성공률 높임)
+        if (window.opener) {
+          window.opener.postMessage(message, "${url.origin}");
+          window.opener.postMessage("authorization:github:success:" + JSON.stringify(message), "${url.origin}");
+        }
 
-          if (window.opener) {
-            window.opener.postMessage(msg, targetOrigin);
-            console.log("✅ postMessage sent successfully!");
-          } else {
-            console.log("❌ No window.opener found");
-          }
+        // 부모 창에 직접 보내기
+        window.parent.postMessage(message, "${url.origin}");
 
-          // 창을 3초 동안 유지 (콘솔 볼 수 있게)
-          setTimeout(() => {
-            console.log("Closing window now...");
-            window.close();
-          }, 3000);
-        </script>
+        console.log("PostMessage sent to origin: ${url.origin}");
+
+        // 2초 후 창 닫기
+        setTimeout(() => window.close(), 2000);
+      </script>
+      <body style="font-family:sans-serif; padding:30px;">
+        <h2>로그인 완료 처리 중...</h2>
+        <p>Decap CMS로 돌아가는 중입니다. 잠시만 기다려주세요.</p>
       </body>
-      </html>
     `;
 
     return new Response(html, {
@@ -77,7 +63,7 @@ export async function onRequest(context) {
     });
 
   } catch (err) {
-    console.error('Callback error:', err);
-    return new Response('<h1>Authentication failed</h1><p>오류가 발생했습니다.</p>', { status: 500 });
+    console.error(err);
+    return new Response('<h1>Authentication failed</h1>', { status: 500 });
   }
 }
