@@ -3,20 +3,22 @@ backend:
   repo: KLOUDS1K/kloudpoto
   branch: main
   base_url: https://kloud.photography
-  auth_endpoint: /api/auth          # ← 앞에 슬래시(/) 추가 (더 안정적)
+  auth_endpoint: api/auth
 
-site_url: https://kloud.photography
-display_url: https://kloud.photography
-
+# 📸 이미지 경로 설정 (가장 중요)
 media_folder: "public/images"
 public_folder: "/images"
+
+# 🔑 사이트 기본 정보
+site_url: https://kloud.photography
+display_url: https://kloud.photography
 
 collections:
   - name: "photos"
     label: "Photos"
     folder: "content/photos"
     create: true
-    slug: "{{year}}-{{month}}-{{day}}-{{slug}}"   # 날짜 추가로 중복 방지
+    slug: "{{year}}-{{month}}-{{day}}-{{slug}}"
     fields:
       - { label: "Title", name: "title", widget: "string" }
       - { label: "Date", name: "date", widget: "datetime" }
