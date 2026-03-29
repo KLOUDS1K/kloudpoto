@@ -4,11 +4,11 @@ export async function onRequest(context) {
   const code = url.searchParams.get('code');
 
   if (!code) {
-    return new Response('No code provided', { status: 400 });
+    return new Response('<h1>No code</h1>', { status: 400 });
   }
 
   try {
-    const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
+    const response = await fetch('https://github.com/login/oauth/access_token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -22,14 +22,13 @@ export async function onRequest(context) {
       })
     });
 
-    const tokenData = await tokenResponse.json();
+    const tokenData = await response.json();
 
     if (tokenData.error) {
-      console.error('GitHub token error:', tokenData);
-      return new Response('Token error', { status: 400 });
+      return new Response(`<h1>Error: ${tokenData.error}</h1>`, { status: 400 });
     }
 
-    // Decap CMS가 정확히 기대하는 postMessage 형식 (가장 중요한 부분)
+    // Decap CMS가 기대하는 정확한 메시지 (가장 중요한 부분)
     const message = {
       type: 'authorization:github:success',
       token: tokenData.access_token,
@@ -42,20 +41,18 @@ export async function onRequest(context) {
       <head><title>Authenticating...</title></head>
       <body>
         <script>
-          (function() {
-            const targetOrigin = '${url.origin}';
-            
-            // 부모 창(Decap CMS)에 토큰 전달
-            if (window.opener) {
-              window.opener.postMessage(${JSON.stringify(message)}, targetOrigin);
-              console.log('PostMessage sent to', targetOrigin);
-            }
-            
-            // 1초 후 자동으로 창 닫기 (안전장치)
-            setTimeout(() => {
-              window.close();
-            }, 800);
-          })();
+          const targetOrigin = "${url.origin}";
+          const msg = ${JSON.stringify(message)};
+
+          if (window.opener) {
+            window.opener.postMessage(msg, targetOrigin);
+            console.log("✅ Token successfully sent to Decap CMS");
+          } else {
+            console.log("⚠️ No opener window");
+          }
+
+          // 창 닫기
+          setTimeout(() => window.close(), 500);
         </script>
       </body>
       </html>
@@ -68,6 +65,6 @@ export async function onRequest(context) {
 
   } catch (err) {
     console.error(err);
-    return new Response('Authentication failed', { status: 500 });
+    return new Response('<h1>Authentication failed</h1>', { status: 500 });
   }
 }
